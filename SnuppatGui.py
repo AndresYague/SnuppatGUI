@@ -935,13 +935,23 @@ class PlotWindow(Frame):
             self.plotRad.append(valRad)
             
             # For each element or isotope, add all values corresponding to each
-            # list
+            # list. Treat effc13 separately
             for ii in range(len(self.pltAtrb["elements"])):
                 val = 0
-                for posMass in eleList[ii]:
-                    posEl, massEl = posMass
-                    val += (float(lnlst2[posEl]) +
-                            float(lnlst1[posEl]))*0.5*massEl
+                if self.pltAtrb["elements"][ii] == "effc13":
+                    c13, c13Mass = eleList[ii][0]
+                    n14, n14Mass = eleList[ii][1]
+                    
+                    # Apply the definition XC13Eff = 13*(YC13 - YN14)
+                    val = float(lnlst2[c13]) + float(lnlst1[c13])
+                    val -= float(lnlst2[n14]) + float(lnlst1[n14])
+                    val *= 0.5*c13Mass
+                    
+                else:
+                    for posMass in eleList[ii]:
+                        posEl, massEl = posMass
+                        val += (float(lnlst2[posEl]) +
+                                float(lnlst1[posEl]))*0.5*massEl
                 
                 self.plotListsOfData[ii].append(val)
             
@@ -975,6 +985,13 @@ class PlotWindow(Frame):
 
 def elementPos(dataFile, elem):
     '''Get element list of indices and masses'''
+    
+    # Be careful with effc13
+    if elem == "effc13":
+        c13 = elementPos(dataFile, "c13")
+        n14 = elementPos(dataFile, "n14")
+        
+        return c13 + n14
     
     # Open file and read
     indicesMass = []
