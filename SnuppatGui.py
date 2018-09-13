@@ -390,7 +390,7 @@ class PlotWindow(Frame):
         self.pltAtrb["age"] = None
         self.pltAtrb["xrange"] = None
         self.pltAtrb["yrange"] = None
-        self.pltAtrb["elements"] = ["he4", "n14", "c12", "c13", "ne22", "p1"]
+        self.pltAtrb["elements"] = ["he4", "n14", "c12", "c13", "ne22", "h"]
         
         # If self.atrbFile exists, get values from there
         if os.path.isfile(self.atrbFile):
@@ -419,8 +419,7 @@ class PlotWindow(Frame):
         
         # If model and age are not specified, get first model
         if self.pltAtrb["model"] is None and self.pltAtrb["age"] is None:
-                self.modelStart = self.fileIndex[self.sortedModels[0]][0]
-                self.currModelii = 0
+            ii = 0
             
         elif self.searchFor == "model":
             # Look for next closest model
@@ -428,18 +427,15 @@ class PlotWindow(Frame):
             if ii > len(self.sortedModels) - 1:
                 ii = len(self.sortedModels) - 1
             
-            self.modelStart = self.fileIndex[self.sortedModels[ii]][0]
-            self.currModelii = ii
-            
         elif self.searchFor == "age":
             # Look for next closest age
             ii = bisect.bisect_left(self.sortedAges, self.pltAtrb["age"] +
                     self.firstAge)
             if ii > len(self.sortedAges) - 1:
                 ii = len(self.sortedAges) - 1
-            
-            self.modelStart = self.fileIndex[self.sortedModels[ii]][0]
-            self.currModelii = ii
+        
+        self.modelStart = self.fileIndex[self.sortedModels[ii]][0]
+        self.currModelii = ii
         
         self.fread.seek(self.modelStart)
     
@@ -451,7 +447,7 @@ class PlotWindow(Frame):
             return
         
         # Check if element in the network
-        if elementPos(self.speciesFile, tempElem)[0] is None:
+        if len(elementPos(self.speciesFile, tempElem)) == 0:
             return
         
         self.pltAtrb["elements"].append(tempElem)
@@ -880,12 +876,10 @@ class PlotWindow(Frame):
         if len(self.pltAtrb) == 0:
             self.__initiatePlotAttributes()
         
-        # Graphic elements
-        positions = list(); massElem = list()
+        # Graphic elements and isotopes
+        eleList = list()
         for elem in self.pltAtrb["elements"]:
-            pos, mass = elementPos(self.speciesFile, elem)
-            positions.append(pos)
-            massElem.append(mass)
+            eleList.append(elementPos(self.speciesFile, elem))
         
         # Get next model
         self.searchModel()
@@ -918,7 +912,6 @@ class PlotWindow(Frame):
             
             # Check if in new model
             if "Model" in line2:
-                brokeNewModel = True
                 break
             
             # Calculate and append values
@@ -941,10 +934,15 @@ class PlotWindow(Frame):
             valRad = float(lnlst2[3]) + float(lnlst1[3])
             self.plotRad.append(valRad)
             
-            # Elements
+            # For each element or isotope, add all values corresponding to each
+            # list
             for ii in range(len(self.pltAtrb["elements"])):
-                pos = positions[ii]
-                val = (float(lnlst2[pos]) + float(lnlst1[pos]))*0.5*massElem[ii]
+                val = 0
+                for posMass in eleList[ii]:
+                    posEl, massEl = posMass
+                    val += (float(lnlst2[posEl]) +
+                            float(lnlst1[posEl]))*0.5*massEl
+                
                 self.plotListsOfData[ii].append(val)
             
             lnlst1 = lnlst2
@@ -976,10 +974,10 @@ class PlotWindow(Frame):
         self.plotElements()
 
 def elementPos(dataFile, elem):
-    '''Create element index'''
+    '''Get element list of indices and masses'''
     
     # Open file and read
-    suggestions = []
+    indicesMass = []
     with open(dataFile, "r") as fread:
         ii = 1
         for line in fread:
@@ -987,24 +985,27 @@ def elementPos(dataFile, elem):
             stri = "{}{}".format(lnlst[1], lnlst[0])
             elmMass = int(lnlst[0])
             
-            # Add to suggestions
-            if lnlst[1] in elem:
-                suggestions.append(stri)
+            # Convert hydrogen and neutrons
+            if stri == "p1" or stri == "d2":
+                lnlst[1] = "h"
+            elif stri == "n1":
+                lnlst[1] = "neut"
             
-            # Compare
+            # Now check if is exactly stri
             if elem == stri:
+                indicesMass.append((ii - 1 + 4, elmMass))
                 break
+            
+            # Check if its an element instead of isotope
+            if elem == lnlst[1]:
+                indicesMass.append((ii - 1 + 4, elmMass))
             
             ii += 1
     
-    if elem != stri:
-        print "{} is not in the network!".format(elem)
-        print "Suggested species: "
-        print suggestions
-        return (None, None)
+    if len(indicesMass) == 0:
+        print "Element not in the list. Please check {}.".format(dataFile)
     
-    # In Snuppat output, the first element is in the 4th position
-    return (ii - 1 + 4, elmMass)
+    return indicesMass
 
 def main():
     '''Main program controlling the GUI'''
