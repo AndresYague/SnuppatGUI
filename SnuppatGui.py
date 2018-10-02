@@ -57,6 +57,11 @@ class MainWindow(Frame):
         self.loadButton = Button(self, text = "LOAD", command = self.loadFile)
         self.loadButton.pack(fill = BOTH, expand = True)
         
+        # Reload
+        self.reloadButton = Button(self, text = "RELOAD", command = self.reload,
+                                 state = DISABLED)
+        self.reloadButton.pack(fill = BOTH, expand = True)
+        
         # Quit
         self.quitButton = Button(self, text = "QUIT", command = self.quit)
         self.quitButton.pack(fill = BOTH, expand = True)
@@ -79,13 +84,17 @@ class MainWindow(Frame):
         self.simulFile = newFile
         self.indexFile()
     
-    def indexFile(self):
-        '''Create a reference index of the simulation file'''
+    def reload(self):
+        '''Reload the last loaded file'''
+        
+        self.indexFile()
+    
+    def totalModels(self):
+        '''Get total of models from file'''
         
         # Check if in unix
         inUnix = True if os.name == "posix" else False
         
-        # Get total of models
         totModels = 0
         if inUnix:
             nL = 5000 # Try with nL lines
@@ -99,12 +108,21 @@ class MainWindow(Frame):
             if totModels != 0:
                 totModels = int(totModels.split()[-1])
         
+        return totModels
+    
+    def indexFile(self):
+        '''Create a reference index of the simulation file'''
+        
+        # Get total of models
+        totModels = self.totalModels()
+        
         # Indicate loading
         print "Loading..."
         print
         
         # Open file
         sortedModels = list(); sortedAges = list()
+        loaded = 0; changed = True
         fileIndex = {}; iniModel = None; oldPrctg = 0
         with open(self.simulFile, "r") as fread:
             # Look for each line with "model" and get the position
@@ -118,6 +136,7 @@ class MainWindow(Frame):
                 
                 # Store model and position
                 if "Model" in line:
+                    loaded += 1
                     lnlst = line.split()
                     
                     # Read modNum, mass and age
@@ -131,6 +150,16 @@ class MainWindow(Frame):
                     
                     if iniModel is None:
                         iniModel = modNum
+                
+                # Every 100 loaded models recalculate if the file is changin
+                if changed and loaded > 0 and loaded%100 == 0:
+                    loaded = 0
+                    oldModels = totModels
+                    totModels = self.totalModels()
+                    
+                    # Make sure that the file is actually changing
+                    if oldModels == totModels:
+                        changed = False
                 
                 # Print progress
                 if totModels != iniModel:
@@ -151,8 +180,9 @@ class MainWindow(Frame):
         self.sortedModels = sortedModels
         self.sortedAges = sortedAges
         
-        # Enable plot button
+        # Enable plot and reload button
         self.plotButton["state"] = NORMAL
+        self.reloadButton["state"] = NORMAL
     
     def plotFile(self):
         '''The meat of the GUI, here the output is plotted'''
