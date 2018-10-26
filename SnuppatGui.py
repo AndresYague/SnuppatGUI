@@ -1,11 +1,78 @@
 # Import everything
-import sys, tkFileDialog, os, matplotlib, bisect, math
+import sys, tkFileDialog, os, matplotlib, bisect, math, struct
 import matplotlib.pyplot as plt
 matplotlib.use("TkAgg")
 from Tkinter import *
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 from matplotlib.ticker import ScalarFormatter
+
+class readBinaryModels(object):
+    '''Class for reading binary models'''
+    
+    def __init__(self, fil):
+        '''Initialize'''
+        
+        super(readBinaryModels, self).__init__()
+        self.fread = open(fil, "rb")
+    
+    def close(self):
+        '''Close file'''
+        
+        self.fread.close()
+    
+    def __readHeader(self):
+        '''Return header'''
+        
+        head = []
+        byte = self.fread.read(4)
+        if len(byte) == 0:
+            return None
+        
+        head.append(*struct.unpack('i', byte))
+        head.append(*struct.unpack('d', self.fread.read(8)))
+        head.append(*struct.unpack('d', self.fread.read(8)))
+        head.append(*struct.unpack('i', self.fread.read(4)))
+        head.append(*struct.unpack('i', self.fread.read(4)))
+        
+        return head
+    
+    def nextModel(self, currPos = None):
+        '''Return next model, unpacked'''
+        
+        if currPos is not None:
+            self.fread.seek(currPos)
+        
+        # Read header
+        head = self.__readHeader()
+        if head is None:
+            return None
+        
+        model = [head]
+        for ii in range(head[3]):
+            s = []
+            for jj in range(head[4]):
+                s.append(*struct.unpack('d', self.fread.read(8)))
+            
+            model.append(s)
+        
+        return model
+    
+    def readOnlyHeader(self):
+        '''Look only for the header and skip the rest'''
+        
+        # Read header
+        currPos = self.fread.tell()
+        head = self.__readHeader()
+        if head is None:
+            return None, None
+        
+        # Skip file
+        for ii in range(head[3]):
+            for jj in range(head[4]):
+                self.fread.read(8)
+        
+        return head, currPos
 
 class MainWindow(Frame):
     '''Create and manage main window'''
@@ -89,91 +156,41 @@ class MainWindow(Frame):
         
         self.indexFile()
     
-    def totalModels(self):
-        '''Get total of models from file'''
-        
-        # Check if in unix
-        inUnix = True if os.name == "posix" else False
-        
-        totModels = 0
-        if inUnix:
-            nL = 5000 # Try with nL lines
-            
-            # Look for last model
-            for line in os.popen("tail -n {} {}".format(nL, self.simulFile)):
-                if "Model" in line:
-                    totModels = line
-            
-            # If no model found in nL lines, continue
-            if totModels != 0:
-                totModels = int(totModels.split()[-1])
-        
-        return totModels
-    
     def indexFile(self):
         '''Create a reference index of the simulation file'''
-        
-        # Get total of models
-        totModels = self.totalModels()
         
         # Indicate loading
         print "Loading..."
         print
         
         # Open file
+        loaded = 0
         sortedModels = list(); sortedAges = list()
-        loaded = 0; changed = True
-        fileIndex = {}; iniModel = None; oldPrctg = 0
-        with open(self.simulFile, "r") as fread:
-            # Look for each line with "model" and get the position
-            while True:
-                currPos = fread.tell()
-                line = fread.readline()
-                
-                # Exit if EOF
-                if len(line) == 0:
-                    break
-                
-                # Store model and position
-                if "Model" in line:
-                    loaded += 1
-                    lnlst = line.split()
-                    
-                    # Read modNum, mass and age
-                    modNum = int(lnlst[-1])
-                    mass = float(fread.readline().split()[-1])
-                    age = 10**(float(fread.readline().split()[-1]) - 3)
-                    
-                    fileIndex[modNum] = (currPos, age)
-                    sortedModels.append(modNum)
-                    sortedAges.append(age)
-                    
-                    if iniModel is None:
-                        iniModel = modNum
-                
-                # Every 100 loaded models recalculate if the file is changin
-                if changed and loaded > 0 and loaded%100 == 0:
-                    loaded = 0
-                    oldModels = totModels
-                    totModels = self.totalModels()
-                    
-                    # Make sure that the file is actually changing
-                    if oldModels == totModels:
-                        changed = False
-                
-                # Print progress
-                if totModels != iniModel:
-                    prctg = float(modNum - iniModel)/(totModels - iniModel)
-                    prctg *= 100
-                    
-                    if totModels > 0 and ((prctg - oldPrctg) > 1):
-                        # Move in shell: up one line, back three columns
-                        # and erase line
-                        print "[1A",; print "[30D",; print "[K",
-                        
-                        # Write precentage.
-                        print "Done {}%".format(int(prctg))
-                        oldPrctg = prctg
+        fileIndex = {}; iniModel = None
+        models = readBinaryModels(self.simulFile)
+        
+        # Look for each line with "model" and get the position
+        while True:
+            head, currPos = models.readOnlyHeader()
+            if head is None:
+                break
+            
+            # Store model and position
+            loaded += 1
+            
+            # Assign modNum, mass and age
+            modNum = head[0]
+            mass = head[1]
+            age = 10**(head[2] - 3)
+            
+            fileIndex[modNum] = (currPos, age)
+            sortedModels.append(modNum)
+            sortedAges.append(age)
+            
+            if iniModel is None:
+                iniModel = modNum
+        
+        models.close()
         
         print "Loaded"
         self.fileIndex = fileIndex
@@ -197,7 +214,7 @@ class MainWindow(Frame):
         plotRoot.mainloop()
         
         # Close
-        win.fread.close()
+        win.models.close()
         plotRoot.destroy()
 
 class PlotWindow(Frame):
@@ -229,9 +246,7 @@ class PlotWindow(Frame):
         self.plotConvRegions = None
         self.ax = None
         self.ax2 = None
-        
-        # Open output file
-        self.fread = open(self.simulFile, "r")
+        self.models = readBinaryModels(self.simulFile)
         
         # Load data directory
         self.getFiles()
@@ -466,8 +481,6 @@ class PlotWindow(Frame):
         
         self.modelStart = self.fileIndex[self.sortedModels[ii]][0]
         self.currModelii = ii
-        
-        self.fread.seek(self.modelStart)
     
     def addElem(self):
         '''Add element to the plot'''
@@ -915,9 +928,12 @@ class PlotWindow(Frame):
         self.searchModel()
         
         # Read the header
-        self.pltAtrb["model"] = int(self.fread.readline().split()[-1])
-        mass = float(self.fread.readline().split()[-1])
-        self.pltAtrb["age"] = 10**(float(self.fread.readline().split()[-1]) - 3)
+        model = self.models.nextModel(self.modelStart)
+        
+        header = model[0]
+        self.pltAtrb["model"] = header[0]
+        mass = header[1]
+        self.pltAtrb["age"] = 10**(header[2] - 3)
         self.pltAtrb["age"] -= self.firstAge
         
         # Initialize variables
@@ -933,35 +949,28 @@ class PlotWindow(Frame):
             self.plotListsOfData.append(list())
         
         # Now let's go mass by mass
-        lnlst1 = self.fread.readline().split()
-        while True:
-            line2 = self.fread.readline()
-            lnlst2 = line2.split()
-            if len(lnlst2) == 0:
-                break
-            
-            # Check if in new model
-            if "Model" in line2:
-                break
+        kk = 1
+        while kk < header[3]:
+            lin1 = model[kk]
+            lin2 = model[kk + 1]
             
             # Calculate and append values
             # Mass
-            self.plotMasses.append((float(lnlst1[0]) +
-                                    float(lnlst2[0]))*0.5*mass)
-            self.plotBordMass.append(float(lnlst1[0])*mass)
+            self.plotMasses.append((lin1[0] + lin2[0])*0.5*mass)
+            self.plotBordMass.append(lin1[0]*mass)
             
             # Temperature
-            valtemp = (float(lnlst2[1]) + float(lnlst1[1]))*5e8
+            valtemp = (lin2[1] + lin1[1])*5e8
             self.plotTemp.append(valtemp)
             
             # Neutron density
-            valrho = (float(lnlst2[2]) + float(lnlst1[2]))*0.5
-            valN = (float(lnlst2[4]) + float(lnlst1[4]))*0.5
+            valrho = (lin2[2] + lin1[2])*0.5
+            valN = (lin2[4] + lin1[4])*0.5
             valrho *= 6.022e23*valN
             self.plotRho.append(valrho)
             
             # Nabla radiative - nabla adiabatic
-            valRad = float(lnlst2[3]) + float(lnlst1[3])
+            valRad = (lin2[3] + lin1[3])*0.5
             self.plotRad.append(valRad)
             
             # For each element or isotope, add all values corresponding to each
@@ -973,19 +982,18 @@ class PlotWindow(Frame):
                     n14, n14Mass = eleList[ii][1]
                     
                     # Apply the definition XC13Eff = 13*(YC13 - YN14)
-                    val = float(lnlst2[c13]) + float(lnlst1[c13])
-                    val -= float(lnlst2[n14]) + float(lnlst1[n14])
+                    val = lin2[c13] + lin1[c13]
+                    val -= lin2[n14] + lin1[n14]
                     val *= 0.5*c13Mass
                     
                 else:
                     for posMass in eleList[ii]:
                         posEl, massEl = posMass
-                        val += (float(lnlst2[posEl]) +
-                                float(lnlst1[posEl]))*0.5*massEl
+                        val += (lin2[posEl] + lin1[posEl])*0.5*massEl
                 
                 self.plotListsOfData[ii].append(val)
             
-            lnlst1 = lnlst2
+            kk += 1
         
         # Get convective regions
         self.plotConvRegions = list()
