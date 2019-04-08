@@ -1,5 +1,5 @@
 # Import everything
-import sys, tkFileDialog, os, matplotlib, bisect, math, struct
+import sys, tkFileDialog, os, matplotlib, bisect, math, struct, pickle, random
 import matplotlib.pyplot as plt
 matplotlib.use("TkAgg")
 from Tkinter import *
@@ -21,8 +21,11 @@ class readBinaryModels(object):
         
         self.fread.close()
     
-    def __readHeader(self):
+    def readHeader(self, currPos = None):
         '''Return header'''
+        
+        if currPos is not None:
+            self.fread.seek(currPos)
         
         head = []
         byte = self.fread.read(4)
@@ -44,7 +47,7 @@ class readBinaryModels(object):
             self.fread.seek(currPos)
         
         # Read header
-        head = self.__readHeader()
+        head = self.readHeader()
         if head is None:
             return None
         
@@ -58,12 +61,12 @@ class readBinaryModels(object):
         
         return model
     
-    def readOnlyHeader(self):
+    def readHeadSkipMod(self):
         '''Look only for the header and skip the rest'''
         
         # Read header
         currPos = self.fread.tell()
-        head = self.__readHeader()
+        head = self.readHeader()
         if head is None:
             return None, None
         
@@ -111,6 +114,33 @@ class MainWindow(Frame):
             self.outDir = outDir
         else:
             self.outDir = os.getcwd()
+    
+    def __checkIndex(self, models, fileIndex, sortedModels):
+        '''Check some random models to check that everything is ok'''
+        
+        # Choose either a 10% of models, 50, or all of them, whatever is
+        # the minimum there are
+        checkNMods = min([max([len(sortedModels)*0.1, 25]), len(sortedModels)])
+        checkNMods = int(checkNMods)
+        
+        print "Checking {} random models".format(checkNMods)
+        for ii in range(checkNMods + 2):
+            if ii < checkNMods:
+                modNum = random.choice(sortedModels)
+            elif ii == checkNMods:
+                print "Checking first model"
+                modNum = sortedModels[0]
+            else:
+                print "Checking last model"
+                modNum = sortedModels[-1]
+            
+            tup = fileIndex[modNum]
+            modHead = models.readHeader(tup[0])
+            
+            if modNum != modHead[0]:
+                return False
+        
+        return True
     
     def createButtons(self):
         '''Set all buttons'''
@@ -161,36 +191,68 @@ class MainWindow(Frame):
         
         # Indicate loading
         print "Loading..."
-        print
         
-        # Open file
-        loaded = 0
-        sortedModels = list(); sortedAges = list()
-        fileIndex = {}; iniModel = None
-        models = readBinaryModels(self.simulFile)
+        # Check if file exists
+        indDir = "indices"
+        if not os.path.exists(indDir):
+            os.mkdir(indDir)
         
-        # Look for each line with "model" and get the position
-        while True:
-            head, currPos = models.readOnlyHeader()
-            if head is None:
-                break
-            
-            # Store model and position
-            loaded += 1
-            
-            # Assign modNum, mass and age
-            modNum = head[0]
-            mass = head[1]
-            age = 10**(head[2] - 3)
-            
-            fileIndex[modNum] = (currPos, age)
-            sortedModels.append(modNum)
-            sortedAges.append(age)
-            
-            if iniModel is None:
-                iniModel = modNum
+        breakFilePath = os.path.split(self.simulFile)
+        indicesFile = os.path.join(indDir, breakFilePath[1] + ".sav")
         
-        models.close()
+        if os.path.exists(indicesFile):
+            with open(indicesFile, "r") as fread:
+                fileIndex = pickle.load(fread)
+                sortedModels = pickle.load(fread)
+                sortedAges = pickle.load(fread)
+            
+            # Check index
+            models = readBinaryModels(self.simulFile)
+            isFine = self.__checkIndex(models, fileIndex, sortedModels)
+            models.close()
+            
+            if not isFine:
+                # Remove file
+                print "Error during check. Removing file and reloading"
+                os.remove(indicesFile)
+                
+                # Now load the file again
+                self.indexFile()
+                return
+            
+            print "Loaded from file"
+            
+        else:
+            
+            # Open file
+            loaded = 0
+            sortedModels = list(); sortedAges = list(); fileIndex = {}
+            models = readBinaryModels(self.simulFile)
+            
+            # Look for each line with "model" and get the position
+            while True:
+                head, currPos = models.readHeadSkipMod()
+                if head is None:
+                    break
+                
+                # Store model and position
+                loaded += 1
+                
+                # Assign modNum, mass and age
+                modNum = head[0]
+                mass = head[1]
+                age = 10**(head[2] - 3)
+                
+                fileIndex[modNum] = (currPos, age)
+                sortedModels.append(modNum)
+                sortedAges.append(age)
+            
+            with open(indicesFile, "w") as fwrite:
+                pickle.dump(fileIndex, fwrite)
+                pickle.dump(sortedModels, fwrite)
+                pickle.dump(sortedAges, fwrite)
+            
+            models.close()
         
         print "Loaded"
         self.fileIndex = fileIndex
@@ -838,11 +900,8 @@ class PlotWindow(Frame):
         # Plot convective regions
         if self.showConve:
             for region in self.plotConvRegions:
-                self.ax.fill_between(region, [yLimit[1], yLimit[1]],
-                        color = "none", hatch = "/", edgecolor = "k")
-        
-        # Set xSpan
-        xSpan = xLimit[1] - xLimit[0]
+                self.ax.fill_between(region, yLimit[0], yLimit[1],
+                        facecolor = "none", hatch = "/", edgecolor = "k")
         
         # Plot chemistry
         self.ax.set_ylabel("Mass fraction")
@@ -897,16 +956,12 @@ class PlotWindow(Frame):
                 label = "Neutron density", lw = 2))
             
         
-        # Legend
-        lins = None
-        for li in lines:
-            if lins is None:
-                lins = li
-            else:
-                lins += li
+        # Unpack lines
+        lines = reduce(lambda x, y: x + y, lines)
         
-        labs = [l.get_label() for l in lins]
-        self.ax.legend(lins, labs, prop = {"size": 10})
+        # Add legend
+        labs = [l.get_label() for l in lines]
+        self.ax.legend(lines, labs, prop = {"size": 10})
         
         # Xlimit
         self.ax.set_xlim(xLimit)
