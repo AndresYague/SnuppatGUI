@@ -22,7 +22,7 @@ class readBinaryModels(object):
 
         self.fread.close()
 
-    def readHeader(self, currPos = None):
+    def readHeader(self, currPos=None):
         '''Return header'''
 
         if currPos is not None:
@@ -41,7 +41,7 @@ class readBinaryModels(object):
 
         return head
 
-    def nextModel(self, currPos = None):
+    def nextModel(self, currPos=None):
         '''Return next model, unpacked'''
 
         if currPos is not None:
@@ -84,7 +84,7 @@ class MainWindow(Frame):
     def __init__(self, root):
         '''Initialize the frame'''
         Frame.__init__(self, root)
-        self.pack()
+        self.pack(fill=BOTH, expand=True)
 
         # Store class variables
         self.root = root
@@ -127,7 +127,7 @@ class MainWindow(Frame):
         checkNMods = min([max([len(sortedModels)*0.1, 25]), len(sortedModels)])
         checkNMods = int(checkNMods)
 
-        print("Checking {} random models".format(checkNMods))
+        print(f"Checking {checkNMods} random models")
         for ii in range(checkNMods + 2):
             if ii < checkNMods:
                 modNum = random.choice(sortedModels)
@@ -150,22 +150,22 @@ class MainWindow(Frame):
         '''Set all buttons'''
 
         # Plot
-        self.plotButton = Button(self, text = "PLOT", command = self.plotFile,
-                                 state = DISABLED)
-        self.plotButton.pack(fill = BOTH, expand = True)
+        self.plotButton = Button(self, text="PLOT", command=self.plotFile,
+                                 state=DISABLED)
+        self.plotButton.pack(fill=BOTH, expand=True)
 
         # Load
-        self.loadButton = Button(self, text = "LOAD", command = self.loadFile)
-        self.loadButton.pack(fill = BOTH, expand = True)
+        self.loadButton = Button(self, text="LOAD", command=self.loadFile)
+        self.loadButton.pack(fill=BOTH, expand=True)
 
         # Reload
-        self.reloadButton = Button(self, text = "RELOAD", command = self.reload,
-                                 state = DISABLED)
-        self.reloadButton.pack(fill = BOTH, expand = True)
+        self.reloadButton = Button(self, text="RELOAD", command=self.reload,
+                                 state=DISABLED)
+        self.reloadButton.pack(fill=BOTH, expand=True)
 
         # Quit
-        self.quitButton = Button(self, text = "QUIT", command = self.quit)
-        self.quitButton.pack(fill = BOTH, expand = True)
+        self.quitButton = Button(self, text="QUIT", command=self.quit)
+        self.quitButton.pack(fill=BOTH, expand=True)
 
     def loadFile(self):
         '''Load file manager'''
@@ -272,7 +272,7 @@ class MainWindow(Frame):
         '''The meat of the GUI, here the output is plotted'''
 
         # Create the object
-        plotRoot = Tk(className = self.simulFile)
+        plotRoot = Tk(className=self.simulFile)
         plotRoot.protocol("WM_DELETE_WINDOW", plotRoot.quit)
         win = PlotWindow(plotRoot, self.fileIndex, self.sortedModels,
                 self.sortedAges, self.simulFile)
@@ -292,7 +292,7 @@ class PlotWindow(Frame):
     def __init__(self, root, fileIndex, sortedModels, sortedAges, simulFile):
         '''Initialize the frame'''
         Frame.__init__(self, root)
-        self.pack()
+        self.pack(fill=BOTH, expand=True)
 
         # Store class variables
         self.root = root
@@ -337,73 +337,73 @@ class PlotWindow(Frame):
 
         # Option frame
         optionFrame = Frame(self)
-        optionFrame.pack(fill = BOTH, expand = True)
+        optionFrame.pack(fill=BOTH, expand=True)
 
         # Axes ranges
-        self.xRangeLabel = Label(optionFrame, text = "x range")
-        self.xRangeLabel.grid(row = 0, column = 0)
+        self.xRangeLabel = Label(optionFrame, text="x range")
+        self.xRangeLabel.grid(row=0, column=0)
 
         self.xRangeTxt = Entry(optionFrame)
-        self.xRangeTxt.grid(row = 0, column = 1)
+        self.xRangeTxt.grid(row=0, column=1)
 
-        self.yRangeLabel = Label(optionFrame, text = "y range")
-        self.yRangeLabel.grid(row = 1, column = 0)
+        self.yRangeLabel = Label(optionFrame, text="y range")
+        self.yRangeLabel.grid(row=1, column=0)
 
         self.yRangeTxt = Entry(optionFrame)
-        self.yRangeTxt.grid(row = 1, column = 1)
+        self.yRangeTxt.grid(row=1, column=1)
 
         # Model and age
-        self.modelLabel = Label(optionFrame, text = "Model")
-        self.modelLabel.grid(row = 0, column = 2)
+        self.modelLabel = Label(optionFrame, text="Model")
+        self.modelLabel.grid(row=0, column=2)
 
         self.modelTxt = Entry(optionFrame)
-        self.modelTxt.grid(row = 0, column = 3)
+        self.modelTxt.grid(row=0, column=3)
 
-        self.ageLabel = Label(optionFrame, text = "Age (ky)")
-        self.ageLabel.grid(row = 1, column = 2)
+        self.ageLabel = Label(optionFrame, text="Age (ky)")
+        self.ageLabel.grid(row=1, column=2)
 
         self.ageTxt = Entry(optionFrame)
-        self.ageTxt.grid(row = 1, column = 3)
+        self.ageTxt.grid(row=1, column=3)
 
         # Add or remove element
-        self.elementLabel = Label(optionFrame, text = "Element")
-        self.elementLabel.grid(row = 0, column = 4)
+        self.elementLabel = Label(optionFrame, text="Element")
+        self.elementLabel.grid(row=0, column=4)
 
         self.elementTxt = Entry(optionFrame)
-        self.elementTxt.grid(row = 0, column = 5)
+        self.elementTxt.grid(row=0, column=5)
 
         # Show temperature, mesh and convective zones
         self.tempCheck = Checkbutton(optionFrame, text = "Temperature",
                 command = self.cTemp)
-        self.tempCheck.grid(row = 2, column = 0)
+        self.tempCheck.grid(row=2, column=0)
         self.tempCheck.deselect()
         if self.showTemp:
             self.tempCheck.select()
 
         self.rhoCheck = Checkbutton(optionFrame, text = "Neutron density",
                 command = self.cRho)
-        self.rhoCheck.grid(row = 2, column = 1)
+        self.rhoCheck.grid(row=2, column=1)
         self.rhoCheck.deselect()
         if self.showRho:
             self.rhoCheck.select()
 
         self.meshCheck = Checkbutton(optionFrame, text = "Mesh",
                 command = self.cMesh)
-        self.meshCheck.grid(row = 2, column = 2)
+        self.meshCheck.grid(row=2, column=2)
         self.meshCheck.deselect()
         if self.showMesh:
             self.meshCheck.select()
 
         self.conveCheck = Checkbutton(optionFrame, text = "Convective zones",
                 command = self.cConv)
-        self.conveCheck.grid(row = 2, column = 3)
+        self.conveCheck.grid(row=2, column=3)
         self.conveCheck.deselect()
         if self.showConve:
             self.conveCheck.select()
 
         self.gridCheck = Checkbutton(optionFrame, text = "Grid",
                 command = self.cGrid)
-        self.gridCheck.grid(row = 2, column = 4)
+        self.gridCheck.grid(row=2, column=4)
         self.gridCheck.deselect()
         if self.showGrid:
             self.gridCheck.select()
@@ -411,60 +411,60 @@ class PlotWindow(Frame):
         # Dashed element lines
         self.dashCheck = Checkbutton(optionFrame, text = "Dashed elements",
                 command = self.cDash)
-        self.dashCheck.grid(row = 2, column = 5)
+        self.dashCheck.grid(row=2, column=5)
         self.dashCheck.deselect()
         if self.dashElements:
             self.dashCheck.select()
 
         # Frame for add and remove buttons
         addRmFrame = Frame(optionFrame)
-        addRmFrame.grid(row = 1, column = 5)
+        addRmFrame.grid(row=1, column=5)
 
         self.addButton = Button(addRmFrame, text = "Add", command =
                 self.addElem)
-        self.addButton.pack(side = LEFT, fill = BOTH, expand = True)
+        self.addButton.pack(side=LEFT, fill=BOTH, expand=True)
 
         self.rmButton = Button(addRmFrame, text = "Remove", command =
                 self.rmElem)
-        self.rmButton.pack(side = LEFT, fill = BOTH, expand = True)
+        self.rmButton.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Next and back frame
         prevNextFrame = Frame(self)
-        prevNextFrame.pack(fill = BOTH, expand = True)
+        prevNextFrame.pack(fill=BOTH, expand=True)
 
         # Next and back buttons
         self.prevButton = Button(prevNextFrame, text = "Previous model",
                 command = self.prevModel)
-        self.prevButton.pack(side = LEFT, fill = BOTH, expand = True)
+        self.prevButton.pack(side=LEFT, fill=BOTH, expand=True)
         self.nextButton = Button(prevNextFrame, text = "Next model", command =
                 self.nextModel)
-        self.nextButton.pack(side = LEFT, fill = BOTH, expand = True)
+        self.nextButton.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Button frame
         butFrame = Frame(self)
-        butFrame.pack(fill = BOTH, expand = True)
+        butFrame.pack(fill=BOTH, expand=True)
 
         # Update button
         self.updateButton = Button(butFrame, text = "UPDATE", command =
                 self.update)
-        self.updateButton.pack(fill = BOTH, expand = True)
+        self.updateButton.pack(fill=BOTH, expand=True)
 
         # Print button
         self.printButton = Button(butFrame, text = "PRINT", command =
                 self.printB)
-        self.printButton.pack(fill = BOTH, expand = True)
+        self.printButton.pack(fill=BOTH, expand=True)
 
         # Save and erase frame
         saveEraseFrame = Frame(self)
-        saveEraseFrame.pack(fill = BOTH, expand = True)
+        saveEraseFrame.pack(fill=BOTH, expand=True)
 
         # Save/Erase state buttons
         self.saveButton = Button(saveEraseFrame, text = "SAVE STATE",
                 command = self.saveB)
-        self.saveButton.pack(side = LEFT, fill = BOTH, expand = True)
+        self.saveButton.pack(side=LEFT, fill=BOTH, expand=True)
         self.eraseButton = Button(saveEraseFrame, text = "ERASE STATE",
                 command = self.eraseB)
-        self.eraseButton.pack(side = LEFT, fill = BOTH, expand = True)
+        self.eraseButton.pack(side=LEFT, fill=BOTH, expand=True)
 
     def createPlotWindow(self):
         '''Create and set the plot window'''
@@ -477,10 +477,10 @@ class PlotWindow(Frame):
         # Show canvas
         self.canvas = FigureCanvasTkAgg(self.fig, self)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill = BOTH, expand = True)
+        self.canvas.get_tk_widget().pack(fill=BOTH, expand=True)
         toolbar = NavigationToolbar2Tk(self.canvas, self)
         toolbar.update()
-        self.canvas._tkcanvas.pack(fill = BOTH, expand = True)
+        self.canvas._tkcanvas.pack(fill=BOTH, expand=True)
 
         self.cid = self.fig.canvas.mpl_connect("draw_event", self.updateDraw)
 
@@ -493,7 +493,7 @@ class PlotWindow(Frame):
 
         # Store initial directory
         if not os.path.exists(dataDir):
-            dataDir = filedialog.askdirectory(title = "Select data directory")
+            dataDir = filedialog.askdirectory(title="Select data directory")
 
         self.dataDir = dataDir
         self.speciesFile = os.path.join(self.dataDir, "species.dat")
@@ -744,9 +744,9 @@ class PlotWindow(Frame):
 
             # Now update model number and age
             self.modelTxt.delete(0, END)
-            self.modelTxt.insert(0, "{}".format(self.pltAtrb["model"]))
+            self.modelTxt.insert(0, f"{self.pltAtrb['model']}")
             self.ageTxt.delete(0, END)
-            self.ageTxt.insert(0, "{:.5f}".format(self.pltAtrb["age"]))
+            self.ageTxt.insert(0, f"{self.pltAtrb['age']:.5f}")
 
     def update(self):
         '''Read all the options and update the plot'''
@@ -837,7 +837,7 @@ class PlotWindow(Frame):
         # Compose header
         header = "Mass | Temperature | Neutron Density"
         for elem in self.pltAtrb["elements"]:
-            header += " | {}".format(elem)
+            header += f" | {elem}"
         header += '\n'
 
         writtenHead = False
@@ -856,9 +856,9 @@ class PlotWindow(Frame):
                 writtenHead = True
 
             # Compose line
-            s = "{} {} {}".format(mass[ii], temp[ii], rho[ii])
+            s = f"{mass[ii]} {temp[ii]} {rho[ii]}"
             for elem in elements:
-                s += " {}".format(elem[ii])
+                s += f" {elem[ii]}"
             s += '\n'
 
             # Write
@@ -882,26 +882,26 @@ class PlotWindow(Frame):
         elements = self.pltAtrb["elements"]
 
         # Write options
-        atrbFile.write("{}\n".format(self.showTemp))
-        atrbFile.write("{}\n".format(self.showRho))
-        atrbFile.write("{}\n".format(self.showConve))
-        atrbFile.write("{}\n".format(self.showMesh))
-        atrbFile.write("{}\n".format(self.showGrid))
-        atrbFile.write("{}\n".format(self.dashElements))
+        atrbFile.write(f"{self.showTemp} # Show temperature\n")
+        atrbFile.write(f"{self.showRho} # Show neutron density\n")
+        atrbFile.write(f"{self.showConve} # Show convection\n")
+        atrbFile.write(f"{self.showMesh} # Show the mesh\n")
+        atrbFile.write(f"{self.showGrid} # Show the grid\n")
+        atrbFile.write(f"{self.dashElements} # Dash the elements\n")
 
         # Write attributes
-        atrbFile.write("{}\n".format(model))
+        atrbFile.write(f"{model}\n")
 
         for elem in xRange:
-            atrbFile.write("{} ".format(elem))
+            atrbFile.write(f"{elem} ")
         atrbFile.write("\n")
 
         for elem in yRange:
-            atrbFile.write("{} ".format(elem))
+            atrbFile.write(f"{elem} ")
         atrbFile.write("\n")
 
         for elem in elements:
-            atrbFile.write("{} ".format(elem))
+            atrbFile.write(f"{elem} ")
         atrbFile.write("\n")
 
         # Close
@@ -999,13 +999,13 @@ class PlotWindow(Frame):
         lines = lins
 
         labs = [l.get_label() for l in lines]
-        self.ax.legend(lines, labs, prop = {"size": 10})
+        self.ax.legend(lines, labs, prop={"size": 10})
 
         # Limits
         self.ax.set_xlim(xLimit)
         self.ax.set_ylim(yLimit)
         self.ax.xaxis.set_major_locator(plt.MaxNLocator(nbins=5))
-        self.ax.xaxis.set_major_formatter(ScalarFormatter(useOffset = False))
+        self.ax.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
 
     def setupAndPlot(self):
         '''Plot with self.pltAtrb attributes'''
@@ -1131,7 +1131,7 @@ def elementPos(dataFile, elem, addIndx):
         ii = 1
         for line in fread:
             lnlst = line.split()
-            stri = "{}{}".format(lnlst[1], lnlst[0])
+            stri = f"{lnlst[1]}{lnlst[0]}"
             elmMass = int(lnlst[0])
 
             # Convert hydrogen and neutrons
@@ -1152,7 +1152,7 @@ def elementPos(dataFile, elem, addIndx):
             ii += 1
 
     if len(indicesMass) == 0:
-        print("Element not in the list. Please check {}.".format(dataFile))
+        print(f"Element not in the list. Please check {dataFile}.")
 
     return indicesMass
 
@@ -1160,7 +1160,7 @@ def main():
     '''Main program controlling the GUI'''
 
     # Initialize
-    root = Tk(className = "Snuppat GUI")
+    root = Tk(className="Snuppat GUI")
     root.protocol("WM_DELETE_WINDOW", root.quit)
     MainWindow(root)
 
